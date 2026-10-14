@@ -1,0 +1,53 @@
+{
+    "name": "paygate-to/paygate-php",
+    "description": "PHP SDK for PayGate.to: card and crypto payments without KYC, instant payouts to your own wallet, and signed callback verification.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "paygate",
+        "paygate.to",
+        "payments",
+        "payment gateway",
+        "crypto",
+        "bitcoin",
+        "usdc",
+        "usdt",
+        "credit card",
+        "no kyc",
+        "white label"
+    ],
+    "homepage": "https://paygate.to/docs/sdk/php/",
+    "support": {
+        "docs": "https://paygate.to/docs/sdk/php/",
+        "source": "https://github.com/paygate-to/paygate-php",
+        "issues": "https://github.com/paygate-to/paygate-php/issues"
+    },
+    "require": {
+        "php": ">=7.4",
+        "ext-json": "*",
+        "ext-openssl": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.6 || ^10.5 || ^11.0"
+    },
+    "suggest": {
+        "ext-curl": "Faster HTTP requests (a streams fallback is used without it)."
+    },
+    "autoload": {
+        "psr-4": {
+            "PayGate\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "PayGate\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit --testsuite unit",
+        "test:integration": "phpunit --testsuite integration"
+    },
+    "config": {
+        "sort-packages": true
+    }
+}
