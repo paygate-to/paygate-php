@@ -328,7 +328,7 @@ In your own tests, pass a fake `http_client` to `Client`. `tests/FakeHttpClient.
 
 ### Testing your callback endpoint
 
-`bin/paygate-callback-tester` sends signed PayGate.to-style callbacks to a running site, so you can try your handler (or any official plugin or module) before taking real payments. It only needs PHP with OpenSSL; you can also download the single file and run it on its own.
+`bin/paygate-callback-tester` sends signed PayGate.to-style callbacks to a running site, so you can try your handler (or any official plugin or module) before taking real payments. It only needs PHP with OpenSSL. Installed with Composer it is `vendor/bin/paygate-callback-tester`; from a clone of this repository or a downloaded copy of the file, run it with `php bin/paygate-callback-tester` (or `php paygate-callback-tester`).
 
 ```bash
 vendor/bin/paygate-callback-tester keygen                 # test_private.pem + paygate_callback_public_test.pem
