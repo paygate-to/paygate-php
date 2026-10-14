@@ -1,0 +1,303 @@
+#!/usr/bin/env php
+<?php
+/**
+ * PayGate.to callback tester: sends signed PayGate.to-style callbacks to your own callback URL,
+ * so you can test your handler, plugin or module before taking real payments.
+ *
+ * Real callbacks are signed with PayGate.to's private key, which only PayGate.to has. This tool
+ * makes a key pair of your own; you trust its public key on your TEST site for the duration of the
+ * test, then remove it. Nothing here can sign as PayGate.to.
+ *
+ *   php paygate-callback-tester keygen [dir]
+ *   php paygate-callback-tester send <callback-url> [options]
+ *   php paygate-callback-tester sign <full-url>
+ *
+ * No dependencies besides PHP's openssl extension. MIT licensed, part of paygate-php.
+ */
+
+declare(strict_types=1);
+
+const TESTER_VERSION = '1.0.0';
+const DEFAULT_KEY_ID = 'test';
+
+function out(string $text = ''): void
+{
+    fwrite(STDOUT, $text . PHP_EOL);
+}
+
+function fail(string $text, int $code = 1): void
+{
+    fwrite(STDERR, 'Error: ' . $text . PHP_EOL);
+    exit($code);
+}
+
+function usage(): void
+{
+    out('PayGate.to callback tester ' . TESTER_VERSION);
+    out('');
+    out('Usage:');
+    out('  paygate-callback-tester keygen [dir]');
+    out('      Creates test_private.pem and paygate_callback_public_test.pem in dir (default: current folder).');
+    out('');
+    out('  paygate-callback-tester send <callback-url> [options]');
+    out('      Appends PayGate.to\'s payment parameters to your registered callback URL, signs the result');
+    out('      with the test key and sends it as PayGate.to does (GET, X-PayGate-Signature, X-PayGate-Key-Id).');
+    out('      --coin=polygon_usdc         coin id (card payouts: polygon_usdc; crypto: btc, erc20_usdt, sol_sol...)');
+    out('      --value=49.90               value_coin: amount received');
+    out('      --txid=0x...                txid_in (default: a random id, so each run is a new payment)');
+    out('      --payout=WALLET[:SHARE]     a payout address for address_out (repeatable; share default 0.99)');
+    out('      --address-in=ADDRESS        address_in (default: a placeholder)');
+    out('      --pending                   send an unconfirmed notice (pending=1)');
+    out('      --key=test_private.pem      private key file (default: ./test_private.pem)');
+    out('      --key-id=test               X-PayGate-Key-Id (default: test)');
+    out('      --times=1                   send the same callback N times at once (tests duplicate handling)');
+    out('      --unsigned                  send without a signature (must be refused)');
+    out('      --tamper                    sign, then change value_coin (must be refused)');
+    out('      --insecure                  do not verify TLS certificates (local test sites only)');
+    out('      --dry-run                   print the URL and headers, send nothing');
+    out('');
+    out('  paygate-callback-tester sign <full-url> [--key=...]');
+    out('      Prints the signature for a URL you built yourself.');
+    out('');
+    out('Trust the test key on a TEST site only, and remove it afterwards:');
+    out('  - official plugins and modules: copy paygate_callback_public_test.pem into their keys/ folder');
+    out('  - paygate-php: $paygate->callbacks()->addKey(\'test\', file_get_contents(\'paygate_callback_public_test.pem\'))');
+    out('  - paygate-node: new PayGate({ callbacks: { keys: { test: fs.readFileSync(\'paygate_callback_public_test.pem\', \'utf8\') } } })');
+    out('  - paygate-laravel: \'public_keys\' => [\'test\' => \'/path/paygate_callback_public_test.pem\'] in config/paygate.php');
+}
+
+/** @return array{0: list<string>, 1: array<string, list<string>|true>} */
+function parse_args(array $argv): array
+{
+    $positional = [];
+    $options = [];
+    foreach (array_slice($argv, 1) as $arg) {
+        if (strncmp($arg, '--', 2) === 0) {
+            $eq = strpos($arg, '=');
+            $name = $eq === false ? substr($arg, 2) : substr($arg, 2, $eq - 2);
+            if ($eq === false) {
+                $options[$name] = true;
+            } else {
+                $options[$name][] = substr($arg, $eq + 1);
+            }
+        } else {
+            $positional[] = $arg;
+        }
+    }
+
+    return [$positional, $options];
+}
+
+function opt(array $options, string $name, ?string $default = null): ?string
+{
+    if (!isset($options[$name])) {
+        return $default;
+    }
+
+    return is_array($options[$name]) ? (string) end($options[$name]) : $default;
+}
+
+function load_private_key(string $file)
+{
+    if (!is_readable($file)) {
+        fail("private key $file not found. Run: paygate-callback-tester keygen");
+    }
+    $key = openssl_pkey_get_private((string) file_get_contents($file));
+    if ($key === false) {
+        fail("$file is not a PEM private key.");
+    }
+
+    return $key;
+}
+
+function sign_url(string $url, $key): string
+{
+    if (!openssl_sign($url, $signature, $key, OPENSSL_ALGO_SHA256)) {
+        fail('signing failed: ' . openssl_error_string());
+    }
+
+    return base64_encode($signature);
+}
+
+/** GET with the PayGate.to headers; returns [status, body]. */
+function http_get(string $url, array $headers, bool $insecure): array
+{
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_TIMEOUT => 60,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_USERAGENT => 'paygate-callback-tester/' . TESTER_VERSION,
+            CURLOPT_SSL_VERIFYPEER => !$insecure,
+            CURLOPT_SSL_VERIFYHOST => $insecure ? 0 : 2,
+        ]);
+        $body = curl_exec($ch);
+        if ($body === false) {
+            $error = curl_error($ch);
+            curl_close($ch);
+
+            return [0, 'request failed: ' . $error];
+        }
+        $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        curl_close($ch);
+
+        return [$status, (string) $body];
+    }
+    $context = stream_context_create([
+        'http' => ['method' => 'GET', 'header' => implode("\r\n", $headers), 'ignore_errors' => true, 'timeout' => 60, 'follow_location' => 0, 'user_agent' => 'paygate-callback-tester/' . TESTER_VERSION],
+        'ssl' => ['verify_peer' => !$insecure, 'verify_peer_name' => !$insecure],
+    ]);
+    $body = @file_get_contents($url, false, $context);
+    $status = 0;
+    foreach ($http_response_header ?? [] as $line) {
+        if (preg_match('#^HTTP/\S+\s+(\d{3})#', $line, $m)) {
+            $status = (int) $m[1];
+        }
+    }
+
+    return [$status, $body === false ? 'request failed' : (string) $body];
+}
+
+function cmd_keygen(array $positional): void
+{
+    $dir = rtrim($positional[1] ?? '.', '/');
+    if (!is_dir($dir) && !mkdir($dir, 0700, true)) {
+        fail("cannot create $dir");
+    }
+    $private = "$dir/test_private.pem";
+    $public = "$dir/paygate_callback_public_test.pem";
+    if (file_exists($private)) {
+        fail("$private already exists; delete it first to make a new pair.");
+    }
+    $key = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
+    if ($key === false || !openssl_pkey_export($key, $pem)) {
+        fail('key generation failed: ' . openssl_error_string());
+    }
+    file_put_contents($private, $pem);
+    chmod($private, 0600);
+    file_put_contents($public, openssl_pkey_get_details($key)['key']);
+    out("Created $private (keep it to yourself)");
+    out("Created $public");
+    out('');
+    out('Trust paygate_callback_public_test.pem on your TEST site only (see --help), and remove it when you are done.');
+}
+
+function cmd_sign(array $positional, array $options): void
+{
+    $url = $positional[1] ?? '';
+    if ($url === '') {
+        fail('give the full URL to sign.');
+    }
+    out(sign_url($url, load_private_key((string) opt($options, 'key', 'test_private.pem'))));
+}
+
+function cmd_send(array $positional, array $options): void
+{
+    $registered = $positional[1] ?? '';
+    if (!preg_match('#^https?://#i', $registered)) {
+        fail('give your callback URL as registered with PayGate.to (http:// or https://), including your own parameters.');
+    }
+    if (preg_match('#(?:[?&])(value_coin|coin|txid_in|txid_out|address_in|value_forwarded_coin|address_out|pending)=#', $registered)) {
+        fail('the registered callback URL must not contain PayGate.to\'s own parameter names.');
+    }
+    $coin = (string) opt($options, 'coin', 'polygon_usdc');
+    $value = (string) opt($options, 'value', '10.00');
+    if (!preg_match('/^\d+(\.\d+)?$/', $value)) {
+        fail('--value must be a plain decimal number.');
+    }
+    $txid = (string) opt($options, 'txid', '0x' . bin2hex(random_bytes(32)));
+    $payouts = [];
+    foreach ((array) ($options['payout'] ?? []) as $spec) {
+        if ($spec === true) {
+            continue;
+        }
+        $parts = explode(':', (string) $spec, 2);
+        $payouts[$parts[0]] = $parts[1] ?? '0.99';
+    }
+    $forwarded = number_format((float) $value * 0.99, 8, '.', '');
+    $params = [
+        'value_coin' => $value,
+        'coin' => $coin,
+        'txid_in' => $txid,
+        'txid_out' => '0x' . bin2hex(random_bytes(32)),
+        'address_in' => (string) opt($options, 'address-in', 'tester-address-in'),
+        'value_forwarded_coin' => rtrim(rtrim($forwarded, '0'), '.'),
+    ];
+    if ($payouts !== []) {
+        $params['address_out'] = json_encode($payouts, JSON_UNESCAPED_SLASHES);
+    } else {
+        out('Tip: add --payout=YOUR_WALLET to include address_out, as PayGate.to does.');
+    }
+    if (isset($options['pending'])) {
+        $params['pending'] = '1';
+    }
+    $url = $registered . (strpos($registered, '?') === false ? '?' : '&') . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+
+    $keyId = (string) opt($options, 'key-id', DEFAULT_KEY_ID);
+    $headers = ['Accept: */*'];
+    $sent = $url;
+    if (!isset($options['unsigned'])) {
+        $headers[] = 'X-PayGate-Signature: ' . sign_url($url, load_private_key((string) opt($options, 'key', 'test_private.pem')));
+        $headers[] = 'X-PayGate-Key-Id: ' . $keyId;
+    }
+    if (isset($options['tamper'])) {
+        $sent = str_replace('value_coin=' . rawurlencode($value), 'value_coin=' . rawurlencode((string) ((float) $value * 100)), $url);
+    }
+
+    out('GET ' . $sent);
+    foreach ($headers as $header) {
+        out('    ' . $header);
+    }
+    if (isset($options['dry-run'])) {
+        return;
+    }
+    $times = max(1, min(20, (int) opt($options, 'times', '1')));
+    $insecure = isset($options['insecure']);
+    if ($times === 1 || !function_exists('curl_multi_init')) {
+        for ($i = 0; $i < $times; $i++) {
+            [$status, $body] = http_get($sent, $headers, $insecure);
+            out(sprintf('-> %d %s', $status, trim(substr($body, 0, 200))));
+        }
+
+        return;
+    }
+    // Several identical deliveries at the same moment, as PayGate.to may retry.
+    $multi = curl_multi_init();
+    $handles = [];
+    for ($i = 0; $i < $times; $i++) {
+        $ch = curl_init($sent);
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 60, CURLOPT_HTTPHEADER => $headers, CURLOPT_SSL_VERIFYPEER => !$insecure, CURLOPT_SSL_VERIFYHOST => $insecure ? 0 : 2]);
+        curl_multi_add_handle($multi, $ch);
+        $handles[] = $ch;
+    }
+    do {
+        curl_multi_exec($multi, $running);
+        curl_multi_select($multi);
+    } while ($running > 0);
+    foreach ($handles as $ch) {
+        out(sprintf('-> %d %s', (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE), trim(substr((string) curl_multi_getcontent($ch), 0, 200))));
+        curl_multi_remove_handle($multi, $ch);
+    }
+    curl_multi_close($multi);
+}
+
+if (!extension_loaded('openssl')) {
+    fail('the PHP openssl extension is required.');
+}
+[$positional, $options] = parse_args($argv);
+switch ($positional[0] ?? '') {
+    case 'keygen':
+        cmd_keygen($positional);
+        break;
+    case 'send':
+        cmd_send($positional, $options);
+        break;
+    case 'sign':
+        cmd_sign($positional, $options);
+        break;
+    default:
+        usage();
+        exit(($positional[0] ?? '') === '' || isset($options['help']) ? 0 : 2);
+}

@@ -19,3 +19,5 @@ All notable changes to this project are documented here. The format follows
 - `CallbackToken` to tie each callback to an order with an HMAC (compatible with the Node.js SDK).
 - Examples: card, on-site crypto and hosted checkouts, and a callback handler that checks the
   signature, the order token, repeats, the coin and the amount.
+- `bin/paygate-callback-tester`: sends signed test callbacks (with your own test key) to a running
+  site, including unsigned, tampered, pending and simultaneous deliveries.

@@ -33,6 +33,9 @@
     "suggest": {
         "ext-curl": "Faster HTTP requests (a streams fallback is used without it)."
     },
+    "bin": [
+        "bin/paygate-callback-tester"
+    ],
     "autoload": {
         "psr-4": {
             "PayGate\\": "src/"

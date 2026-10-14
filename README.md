@@ -326,6 +326,30 @@ PAYGATE_INTEGRATION=1 composer test:integration       # read-only calls to the l
 
 In your own tests, pass a fake `http_client` to `Client`. `tests/FakeHttpClient.php` shows how. To test your callback handler, create a `CallbackVerifier` with your own test key pair (`new CallbackVerifier(['v1' => $testPublicPem])`) and sign the URL with `openssl_sign()`.
 
+### Testing your callback endpoint
+
+`bin/paygate-callback-tester` sends signed PayGate.to-style callbacks to a running site, so you can try your handler (or any official plugin or module) before taking real payments. It only needs PHP with OpenSSL; you can also download the single file and run it on its own.
+
+```bash
+vendor/bin/paygate-callback-tester keygen                 # test_private.pem + paygate_callback_public_test.pem
+
+# Trust the public key on your TEST site, for example:
+#   $paygate->callbacks()->addKey('test', file_get_contents('paygate_callback_public_test.pem'));
+# or copy it into an official plugin's keys/ folder.
+
+vendor/bin/paygate-callback-tester send 'https://shop.test/paygate/callback.php?order=1001&token=…' \
+    --coin=polygon_usdc --value=49.90 --payout=0xYourPolygonWallet
+
+vendor/bin/paygate-callback-tester send '…' --unsigned          # must be refused
+vendor/bin/paygate-callback-tester send '…' --tamper            # signed, then changed: must be refused
+vendor/bin/paygate-callback-tester send '…' --times=4           # 4 identical deliveries at once: credit once
+vendor/bin/paygate-callback-tester send '…' --pending           # unconfirmed notice: do not ship
+```
+
+The callback URL is the one your code registered with PayGate.to, including your own parameters. The tester appends PayGate.to's payment data in the documented order, signs the full URL and sends it with `X-PayGate-Signature` and `X-PayGate-Key-Id: test`. Run `paygate-callback-tester` without arguments for every option.
+
+> Real callbacks are signed with PayGate.to's private key, which only PayGate.to has. The tester signs with your own test key, so trust that key on a test site only and remove it afterwards.
+
 ## Security notes
 
 - Always verify the signature, and answer 403 when it fails. A callback that has not been verified proves nothing; the `User-Agent` header can be set by anyone.
