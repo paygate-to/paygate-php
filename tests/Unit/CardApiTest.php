@@ -243,15 +243,19 @@ final class CardApiTest extends TestCase
     public function testProviders(): void
     {
         $this->http->queue(['providers' => [
-            ['id' => 'wert', 'provider_name' => 'Wert.io', 'status' => 'active', 'minimum_currency' => 'USD', 'minimum_amount' => 1],
-            ['id' => 'stripe', 'provider_name' => 'Stripe (USA)', 'status' => 'inactive', 'minimum_currency' => 'USD', 'minimum_amount' => 2],
+            ['id' => 'stripe', 'provider_name' => 'Stripe (US/EU)', 'status' => 'active', 'fees' => '2% + Provider', 'minimum_currency' => 'USD', 'minimum_amount' => 2],
+            ['id' => 'banxa', 'provider_name' => 'Banxa', 'status' => 'unstable', 'minimum_currency' => 'USD', 'minimum_amount' => 11],
         ]]);
         $providers = $this->card->providers();
+        // The trailing slash avoids the API's redirect (the SDK never follows redirects).
+        self::assertSame('https://api.paygate.to/control/provider-status/', $this->http->last()['url']);
         self::assertCount(2, $providers);
-        self::assertSame('wert', $providers[0]->getId());
+        self::assertSame('stripe', $providers[0]->getId());
         self::assertTrue($providers[0]->isActive());
+        self::assertSame('2% + Provider', $providers[0]->getFees());
         self::assertFalse($providers[1]->isActive());
-        self::assertSame('2', $providers[1]->getMinimumAmount());
+        self::assertSame('11', $providers[1]->getMinimumAmount());
+        self::assertSame('', $providers[1]->getFees());
     }
 
     public function testConvertToUsd(): void

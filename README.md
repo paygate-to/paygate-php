@@ -65,16 +65,16 @@ header('Location: ' . $payUrl);
 
 The customer can see the amount in the payment link, so always compare what arrives with what you expect (see [Handling the callback](#handling-the-callback)).
 
-`paymentUrl()` opens the hosted page, which lists the providers available for the customer's country, amount and currency. You can send the customer straight to one provider instead. `providers()` lists the providers, with their status and minimum order:
+`paymentUrl()` opens the hosted page, which lists the providers available for the customer's country, amount and currency. You can send the customer straight to one provider instead. `providers()` lists the providers, with their status, fees and minimum order:
 
 ```php
 foreach ($paygate->card()->providers() as $provider) {
     if ($provider->isActive()) {
-        echo $provider->getId(), ' ', $provider->getName(), ' min ', $provider->getMinimumAmount(), ' ', $provider->getMinimumCurrency(), "\n";
+        echo $provider->getId(), ' ', $provider->getName(), ' fees ', $provider->getFees(), ' min ', $provider->getMinimumAmount(), ' ', $provider->getMinimumCurrency(), "\n";
     }
 }
 
-$payUrl = $paygate->card()->paymentUrl($wallet, '49.90', 'buyer@example.com', 'USD', 'wert');
+$payUrl = $paygate->card()->paymentUrl($wallet, '49.90', 'buyer@example.com', 'USD', 'stripe');
 ```
 
 The same callback URL always returns the same wallet, so rebuilding the link for an order is safe. Store `$wallet->getIpnToken()` if you want to use `paymentStatus()` later.

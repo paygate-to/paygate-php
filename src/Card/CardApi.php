@@ -170,13 +170,15 @@ final class CardApi
     }
 
     /**
-     * All card providers with their status and minimum order (GET /control/provider-status).
+     * All card providers with their status, fees and minimum order (GET /control/provider-status/).
      *
      * @return array<int,Provider>
      */
     public function providers(): array
     {
-        $data = $this->api->get('control/provider-status');
+        // The trailing slash matters: without it the API answers with a redirect, which the SDK
+        // never follows (redirects are disabled so requests can't be sent to another host).
+        $data = $this->api->get('control/provider-status/');
         $list = isset($data['providers']) && is_array($data['providers']) ? $data['providers'] : [];
         $out = [];
         foreach ($list as $row) {
