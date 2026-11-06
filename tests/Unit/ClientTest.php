@@ -10,6 +10,7 @@ use PayGate\Exception\ApiException;
 use PayGate\Exception\InvalidArgumentException;
 use PayGate\Exception\TransportException;
 use PayGate\Tests\FakeHttpClient;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class ClientTest extends TestCase
@@ -25,9 +26,9 @@ final class ClientTest extends TestCase
 
     public function testDedicatedDomainIsNormalised(): void
     {
-        $client = new Client(['api_domain' => 'https://API-MyShop-1a2b.paygate.to/', 'checkout_domain' => 'pay.example.com', 'http_client' => new FakeHttpClient()]);
+        $client = new Client(['api_domain' => 'https://API-MyShop-1a2b.paygate.to/', 'checkout_domain' => 'pay.example8585859.com', 'http_client' => new FakeHttpClient()]);
         self::assertSame('api-myshop-1a2b.paygate.to', $client->getApiDomain());
-        self::assertSame('pay.example.com', $client->getCheckoutDomain());
+        self::assertSame('pay.example8585859.com', $client->getCheckoutDomain());
     }
 
     public function testRejectsUnknownOption(): void
@@ -88,6 +89,7 @@ final class ClientTest extends TestCase
     /**
      * @dataProvider errorResponses
      */
+    #[DataProvider('errorResponses')]
     public function testErrorResponsesThrowApiException(string $body, int $status): void
     {
         $http = (new FakeHttpClient())->queue($body, $status);

@@ -69,11 +69,11 @@ final class LiveApiTest extends TestCase
         if (!$wallet) {
             self::markTestSkipped('Set PAYGATE_TEST_EVM_WALLET to create test wallets.');
         }
-        $callback = 'https://example.com/paygate-sdk-test?order=' . bin2hex(random_bytes(4));
+        $callback = 'https://example8585859.com/paygate-sdk-test?order=' . bin2hex(random_bytes(4));
 
         $card = $this->client->card()->createWallet($wallet, $callback);
         self::assertNotSame('', $card->getAddressIn());
-        self::assertStringStartsWith('https://', $this->client->card()->paymentUrl($card, '10', 'test@example.com', 'USD'));
+        self::assertStringStartsWith('https://', $this->client->card()->paymentUrl($card, '10', 'test@example8585859.com', 'USD'));
 
         $crypto = $this->client->crypto()->createWallet('polygon_usdc', $wallet, $callback);
         self::assertNotSame('', $crypto->getAddressIn());

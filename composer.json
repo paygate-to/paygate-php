@@ -28,7 +28,7 @@
         "ext-openssl": "*"
     },
     "require-dev": {
-        "phpunit/phpunit": "^9.6 || ^10.5 || ^11.0"
+        "phpunit/phpunit": "^9.6 || ^10.5 || ^11.0 || ^12.0"
     },
     "suggest": {
         "ext-curl": "Faster HTTP requests (a streams fallback is used without it)."

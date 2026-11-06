@@ -6,6 +6,7 @@ namespace PayGate\Tests\Unit;
 
 use PayGate\Callback\CallbackData;
 use PayGate\Exception\InvalidArgumentException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class CallbackDataTest extends TestCase
@@ -50,6 +51,7 @@ final class CallbackDataTest extends TestCase
     /**
      * @dataProvider pendingValues
      */
+    #[DataProvider('pendingValues')]
     public function testPending(string $query, bool $pending): void
     {
         self::assertSame($pending, CallbackData::fromQueryString($query)->isPending());

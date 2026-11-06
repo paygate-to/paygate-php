@@ -6,11 +6,12 @@ namespace PayGate\Tests\Unit;
 
 use PayGate\Callback\CallbackVerifier;
 use PayGate\Exception\InvalidArgumentException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class CallbackVerifierTest extends TestCase
 {
-    private const REGISTERED = 'https://www.example.com/orders.php?number=827746841326';
+    private const REGISTERED = 'https://www.example8585859.com/orders.php?number=827746841326';
 
     /** The documented example callback query. */
     private const QUERY = 'number=827746841326&value_coin=105.6&coin=polygon_usdc&txid_in=0xa22a82b4aefbc55f6382e1b5c0b4f0e3c034a654df3bcac431f7fed1942e22bc&txid_out=0x94c2c3e84c2021e6bf377aebf8abf03b49570611bb0c336e357d7f4516f56244&address_in=0x32e854bD1270670C832634CA87858fFd9F3e2c78&value_forwarded_coin=104.016&address_out=%7B%220x34653D12778FccF10eE978EfFb16450258d2aFc9%22%3A%220.0500%22%2C%220x042beb6Ab05814c3A54C4124e368a30c4f7c93FB%22%3A%220.9250%22%7D';
@@ -43,7 +44,7 @@ final class CallbackVerifierTest extends TestCase
 
     public function testValidSignature(): void
     {
-        $signature = self::sign('https://www.example.com/orders.php?' . self::QUERY);
+        $signature = self::sign('https://www.example8585859.com/orders.php?' . self::QUERY);
         $result = $this->verifier()->verify(self::REGISTERED, self::QUERY, $signature, 'v1');
         self::assertTrue($result->isValid());
         self::assertSame('', $result->getReason());
@@ -52,13 +53,13 @@ final class CallbackVerifierTest extends TestCase
 
     public function testMissingKeyIdMeansV1(): void
     {
-        $signature = self::sign('https://www.example.com/orders.php?' . self::QUERY);
+        $signature = self::sign('https://www.example8585859.com/orders.php?' . self::QUERY);
         self::assertTrue($this->verifier()->verify(self::REGISTERED, self::QUERY, $signature, null)->isValid());
     }
 
     public function testAlteredAmountIsRejected(): void
     {
-        $signature = self::sign('https://www.example.com/orders.php?' . self::QUERY);
+        $signature = self::sign('https://www.example8585859.com/orders.php?' . self::QUERY);
         $forged = str_replace('value_coin=105.6', 'value_coin=1056', self::QUERY);
         $result = $this->verifier()->verify(self::REGISTERED, $forged, $signature, 'v1');
         self::assertFalse($result->isValid());
@@ -76,21 +77,22 @@ final class CallbackVerifierTest extends TestCase
 
     public function testOtherHostOrPathIsRejected(): void
     {
-        $signature = self::sign('https://www.example.com/orders.php?' . self::QUERY);
+        $signature = self::sign('https://www.example8585859.com/orders.php?' . self::QUERY);
         self::assertSame('signature_mismatch', $this->verifier()->verify('https://evil.example/orders.php', self::QUERY, $signature)->getReason());
-        self::assertSame('signature_mismatch', $this->verifier()->verify('https://www.example.com/other.php', self::QUERY, $signature)->getReason());
+        self::assertSame('signature_mismatch', $this->verifier()->verify('https://www.example8585859.com/other.php', self::QUERY, $signature)->getReason());
     }
 
     public function testSignatureFromAnotherKeyIsRejected(): void
     {
         $other = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
-        openssl_sign('https://www.example.com/orders.php?' . self::QUERY, $raw, $other, OPENSSL_ALGO_SHA256);
+        openssl_sign('https://www.example8585859.com/orders.php?' . self::QUERY, $raw, $other, OPENSSL_ALGO_SHA256);
         self::assertSame('signature_mismatch', $this->verifier()->verify(self::REGISTERED, self::QUERY, base64_encode($raw))->getReason());
     }
 
     /**
      * @dataProvider failures
      */
+    #[DataProvider('failures')]
     public function testFailsClosed(?string $signature, ?string $keyId, string $registered, string $reason): void
     {
         $result = $this->verifier()->verify($registered, self::QUERY, $signature, $keyId);
@@ -126,7 +128,7 @@ final class CallbackVerifierTest extends TestCase
 
             return $id === 'v2' ? self::$publicPem : null;
         });
-        $signature = self::sign('https://www.example.com/orders.php?' . self::QUERY);
+        $signature = self::sign('https://www.example8585859.com/orders.php?' . self::QUERY);
         self::assertTrue($verifier->verify(self::REGISTERED, self::QUERY, $signature, 'v2')->isValid());
         self::assertTrue($verifier->verify(self::REGISTERED, self::QUERY, $signature, 'v2')->isValid());
         self::assertSame('unknown_key_id', $verifier->verify(self::REGISTERED, self::QUERY, $signature, 'v3')->getReason());
@@ -149,7 +151,7 @@ final class CallbackVerifierTest extends TestCase
 
     public function testOnlyOneLeadingQuestionMarkIsAccepted(): void
     {
-        $signature = self::sign('https://www.example.com/orders.php?' . self::QUERY);
+        $signature = self::sign('https://www.example8585859.com/orders.php?' . self::QUERY);
         self::assertTrue($this->verifier()->verify(self::REGISTERED, '?' . self::QUERY, $signature)->isValid());
         self::assertFalse($this->verifier()->verify(self::REGISTERED, '??' . self::QUERY, $signature)->isValid());
     }
@@ -167,13 +169,13 @@ final class CallbackVerifierTest extends TestCase
         $details = openssl_pkey_get_details(openssl_pkey_get_public($pem));
         self::assertSame(2048, $details['bits']);
         // The default verifier loads it and rejects a signature it did not make.
-        $signature = self::sign('https://www.example.com/orders.php?' . self::QUERY);
+        $signature = self::sign('https://www.example8585859.com/orders.php?' . self::QUERY);
         self::assertSame('signature_mismatch', (new CallbackVerifier())->verify(self::REGISTERED, self::QUERY, $signature, 'v1')->getReason());
     }
 
     public function testVerifyRequestReadsServerArray(): void
     {
-        $signature = self::sign('https://www.example.com/orders.php?' . self::QUERY);
+        $signature = self::sign('https://www.example8585859.com/orders.php?' . self::QUERY);
         $server = [
             'REQUEST_URI' => '/orders.php?' . self::QUERY,
             'QUERY_STRING' => 'ignored',

@@ -10,6 +10,7 @@ use PayGate\Crypto\CryptoApi;
 use PayGate\Exception\ApiException;
 use PayGate\Exception\InvalidArgumentException;
 use PayGate\Tests\FakeHttpClient;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class CryptoApiTest extends TestCase
@@ -119,6 +120,7 @@ final class CryptoApiTest extends TestCase
     /**
      * @dataProvider badCoins
      */
+    #[DataProvider('badCoins')]
     public function testBadCoinIdentifier(string $coin): void
     {
         $this->expectException(InvalidArgumentException::class);

@@ -10,6 +10,7 @@ use PayGate\Client;
 use PayGate\Exception\ApiException;
 use PayGate\Exception\InvalidArgumentException;
 use PayGate\Tests\FakeHttpClient;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class CardApiTest extends TestCase
@@ -171,9 +172,9 @@ final class CardApiTest extends TestCase
 
     public function testPaymentUrlKeepsAddressEncodedOnce(): void
     {
-        $url = $this->card->paymentUrl(self::ADDRESS_IN, 49.9, 'buyer+1@example.com', 'eur');
+        $url = $this->card->paymentUrl(self::ADDRESS_IN, 49.9, 'buyer+1@example8585859.com', 'eur');
         self::assertSame(
-            'https://checkout.paygate.to/pay.php?address=' . self::ADDRESS_IN . '&amount=49.9&email=buyer%2B1%40example.com&currency=EUR',
+            'https://checkout.paygate.to/pay.php?address=' . self::ADDRESS_IN . '&amount=49.9&email=buyer%2B1%40example8585859.com&currency=EUR',
             $url
         );
     }
@@ -222,6 +223,7 @@ final class CardApiTest extends TestCase
      *
      * @param mixed $amount
      */
+    #[DataProvider('badPaymentInput')]
     public function testPaymentUrlValidation($amount, string $email, string $currency): void
     {
         $this->expectException(InvalidArgumentException::class);

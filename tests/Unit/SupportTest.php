@@ -8,6 +8,7 @@ use PayGate\Exception\InvalidArgumentException;
 use PayGate\Http\ApiRequester;
 use PayGate\Support\Amount;
 use PayGate\Support\Host;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class SupportTest extends TestCase
@@ -17,6 +18,7 @@ final class SupportTest extends TestCase
      *
      * @param int|float|string $in
      */
+    #[DataProvider('amounts')]
     public function testAmountFormat($in, string $out): void
     {
         self::assertSame($out, Amount::format($in));
@@ -39,6 +41,7 @@ final class SupportTest extends TestCase
      *
      * @param mixed $in
      */
+    #[DataProvider('badAmounts')]
     public function testBadAmounts($in): void
     {
         $this->expectException(InvalidArgumentException::class);
