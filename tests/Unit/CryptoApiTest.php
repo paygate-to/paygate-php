@@ -191,6 +191,25 @@ final class CryptoApiTest extends TestCase
         self::assertSame('https://checkout.paygate.to/crypto/hosted.php?payment_token=tok%2B%3D&add_fees=1&theme=dark&domain=pay.myshop.com', $url);
     }
 
+    public function testXrpWalletKeepsTheDestinationTag(): void
+    {
+        $this->http->queue(['address_in' => 'rHCXoW2kAvMMMZoWtsNzgFQthPVighxiQr', 'callback_url' => self::CALLBACK, 'ipn_token' => 'aXBu']);
+        $wallet = $this->crypto->createWallet('xrp', 'rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn?dt=777', self::CALLBACK);
+        self::assertSame('/crypto/xrp/wallet.php', $this->http->lastPath());
+        self::assertSame('address=rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn%3Fdt%3D777&callback=' . rawurlencode(self::CALLBACK), $this->http->lastQuery());
+        self::assertSame('rHCXoW2kAvMMMZoWtsNzgFQthPVighxiQr', $wallet->getAddressIn());
+    }
+
+    public function testHostedWalletAcceptsXrp(): void
+    {
+        $this->http->queue(['payment_token' => 'tok', 'callback_url' => self::CALLBACK, 'ipn_token' => 'aXBu']);
+        $this->crypto->createHostedWallet(['xrp' => 'rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn?dt=777'], 10, 'USD', self::CALLBACK);
+        self::assertSame(
+            ['xrp' => 'rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn?dt=777', 'fiat_amount' => 10, 'fiat_currency' => 'USD', 'callback' => self::CALLBACK],
+            json_decode((string) $this->http->last()['body'], true)
+        );
+    }
+
     public function testHostedWalletRejectsUnknownNetwork(): void
     {
         $this->expectException(InvalidArgumentException::class);

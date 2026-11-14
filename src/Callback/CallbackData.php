@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace PayGate\Callback;
 
+use PayGate\Crypto\XrpAddress;
 use PayGate\Exception\InvalidArgumentException;
 use PayGate\Support\Decimal;
 
@@ -191,11 +192,15 @@ final class CallbackData
         return $payouts;
     }
 
-    /** Amount received by one payout address (case-insensitive match), null if it was not paid. */
+    /**
+     * Amount received by one payout address (case-insensitive match), null if it was not paid.
+     * An XRP X-address is matched in the form PayGate.to reports it: "r…?dt=TAG".
+     */
     public function getPayoutFor(string $address, ?int $scale = null): ?string
     {
+        $address = XrpAddress::payoutForm($address);
         foreach ($this->getPayouts($scale) as $payee => $amount) {
-            if (strcasecmp($payee, trim($address)) === 0) {
+            if (strcasecmp($payee, $address) === 0) {
                 return $amount;
             }
         }

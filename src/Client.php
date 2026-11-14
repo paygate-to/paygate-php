@@ -25,7 +25,7 @@ use PayGate\Support\Host;
  */
 final class Client
 {
-    public const VERSION = '1.1.0';
+    public const VERSION = '1.2.0';
     public const DEFAULT_API_DOMAIN = 'api.paygate.to';
     public const DEFAULT_CHECKOUT_DOMAIN = 'checkout.paygate.to';
 

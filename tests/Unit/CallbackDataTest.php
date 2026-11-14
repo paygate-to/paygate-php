@@ -37,6 +37,17 @@ final class CallbackDataTest extends TestCase
         self::assertNull($data->getPayoutFor('0xnobody'));
     }
 
+    public function testXrpPayoutMatchesTagAndXAddress(): void
+    {
+        // PayGate.to reports an XRP payout as r…?dt=TAG, also when the wallet was given as an X-address.
+        $data = CallbackData::fromQueryString('order=7&coin=xrp&value_coin=25&value_forwarded_coin=24&address_out='
+            . rawurlencode('{"rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn?dt=777":"1"}'));
+        self::assertSame('24', $data->getPayoutFor('rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn?dt=777'));
+        self::assertSame('24', $data->getPayoutFor('X7qvLs7gSnNoKvZzNWUT2e8st17QPY84SkdtoNKGbhoPHEW')); // tag 777
+        self::assertNull($data->getPayoutFor('X7qvLs7gSnNoKvZzNWUT2e8st17QPY8PYNZvJw9PF88Q9nV'));      // tag 778
+        self::assertNull($data->getPayoutFor('rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn'));                                                 // no tag
+    }
+
     public function testParserKeepsDotsAndLastValue(): void
     {
         $data = CallbackData::fromQueryString('?my.order=5&a=1&a=2&name=J%C3%B6rg+M&flag');

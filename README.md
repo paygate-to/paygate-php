@@ -3,7 +3,7 @@
 Accept card and crypto payments in PHP without KYC, with every payment forwarded instantly to your own wallet.
 
 - **Cards**: Visa, Mastercard, Apple Pay, Google Pay and more through the hosted checkout. You receive USDC on Polygon.
-- **Crypto**: Bitcoin, Ethereum, USDT, USDC, Solana, Litecoin and many more on your own page with a QR code, or on the hosted multi-coin page, which also takes Monero, Zcash and TON.
+- **Crypto**: Bitcoin, Ethereum, USDT, USDC, Solana, Litecoin, XRP and many more on your own page with a QR code, or on the hosted multi-coin page, which also takes Monero, Zcash and TON.
 - **Callbacks**: PayGate.to's RSA signature is checked against the bundled public key. Payout amounts are decoded for you.
 - **White label**: you can use your own checkout domain, logo and colours, earn affiliate commissions, and split payouts across up to 19 wallets.
 
@@ -94,6 +94,8 @@ echo '<img src="', $qr['data_uri'], '" alt="Payment QR code">';
 
 Coins are written as `btc`, `erc20_usdc` or `erc20/usdc`; all three forms work. Use a payout wallet on the coin's network, for example an EVM address for ERC20, BEP20 and Polygon tokens.
 
+Native XRP on the XRP Ledger is `xrp` (`bep20_xrp` is XRP on BNB Smart Chain). Its payout wallet can be a classic address (`r…`), a classic address with a destination tag (`r…?dt=777`) or an X-address. The customer pays `address_in` and never needs a tag.
+
 Wallet options:
 
 ```php
@@ -105,7 +107,7 @@ $crypto->createWallet('ltc', $myLtcWallet, $callback, [
 
 ## Hosted multi-coin page
 
-The customer picks a coin on the hosted page. Pass one wallet for each network you accept (`CryptoApi::HOSTED_NETWORKS`: `evm`, `btc`, `bitcoincash`, `ltc`, `doge`, `solana`, `trc20`, `xmr`, `zec`, `ton`).
+The customer picks a coin on the hosted page. Pass one wallet for each network you accept (`CryptoApi::HOSTED_NETWORKS`: `evm`, `btc`, `bitcoincash`, `ltc`, `doge`, `solana`, `trc20`, `xmr`, `zec`, `ton`, `xrp`).
 
 ```php
 $hosted = $paygate->crypto()->createHostedWallet([
@@ -169,7 +171,7 @@ Each check matters:
 - **Token**: the callback URL is chosen when the wallet is created, so anyone can create a wallet whose callback names one of your orders and pay it a few cents. The token proves your server issued that order reference. Without tokens, compare `getAddressIn()` with the order's deposit address (`getPolygonAddressIn()` for cards, `getAddressIn()` for crypto); the hosted page has no address in advance, so use tokens there.
 - **Transaction id**: callbacks are repeated until you answer `ok`.
 - **Coin and amount**: the payment link is visible to the customer, and any token can be sent to a crypto address.
-- **Payout address**: callback URLs end up in web server logs. With a leaked URL, someone could create a wallet that pays *them* and still call your callback. `$data->getPayoutFor('0xYourWallet')` returns what reached your wallet (null if nothing did). Expect it to be at least 90% of the amount forwarded.
+- **Payout address**: callback URLs end up in web server logs. With a leaked URL, someone could create a wallet that pays *them* and still call your callback. `$data->getPayoutFor('0xYourWallet')` returns what reached your wallet (null if nothing did). Expect it to be at least 90% of the amount forwarded. PayGate.to reports an XRP payout as `r…?dt=TAG` (or `r…` without a tag), also when you gave an X-address; `getPayoutFor()` accepts your wallet in any of these forms.
 
 Never use PayGate.to's parameter names (`value_coin`, `coin`, `txid_in`, `txid_out`, `address_in`, `value_forwarded_coin`, `address_out`, `pending`) in your callback URL; the SDK refuses them. If a name appears twice, `CallbackData` uses the last value, which is PayGate.to's.
 

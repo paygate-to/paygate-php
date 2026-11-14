@@ -24,8 +24,11 @@ use PayGate\Support\Validate;
  */
 final class CryptoApi
 {
-    /** Networks accepted by createHostedWallet(). "evm" covers ERC20, BEP20, Polygon, Arbitrum, Base, Optimism, Avalanche-C... */
-    public const HOSTED_NETWORKS = ['evm', 'btc', 'bitcoincash', 'ltc', 'doge', 'solana', 'trc20', 'xmr', 'zec', 'ton'];
+    /**
+     * Networks accepted by createHostedWallet(). "evm" covers ERC20, BEP20, Polygon, Arbitrum, Base, Optimism, Avalanche-C...
+     * "xrp" is the XRP Ledger: "r…", "r…?dt=TAG" with a destination tag, or an X-address.
+     */
+    public const HOSTED_NETWORKS = ['evm', 'btc', 'bitcoincash', 'ltc', 'doge', 'solana', 'trc20', 'xmr', 'zec', 'ton', 'xrp'];
 
     /** @var ApiRequester */
     private $api;
